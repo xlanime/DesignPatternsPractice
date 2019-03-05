@@ -1,10 +1,14 @@
 package com.gupao.learn.design.model.singleton;
 
+import com.gupao.learn.design.model.singleton.enums.EnumSingleton;
 import com.gupao.learn.design.model.singleton.hungry.HungrySingleton;
 import com.gupao.learn.design.model.singleton.lazy.LazySingletonInnerClass;
+import com.gupao.learn.design.model.singleton.serializable.SerializableSingleton;
+import com.gupao.learn.design.model.utils.StreamUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.CountDownLatch;
@@ -17,6 +21,11 @@ import java.util.concurrent.CountDownLatch;
  */
 public class SingletonModelTest {
     /**
+     * 序列化的对象
+     */
+    private static final String SERIALIZABLE_SINGLETON = "SerializableSingleton";
+
+    /**
      * 初始化日志对象
      */
     private static Logger logger = LoggerFactory.getLogger(SingletonModelTest.class);
@@ -24,21 +33,28 @@ public class SingletonModelTest {
     /**
      * 单例模式无法在单元测试中测试，因为单元测试的时候，单例并不会实例化，
      * 因此这里使用main方法进行测试。
+     *
      * @param args main方法入参
      */
     public static void main(String[] args) {
         //饿汉式单例测试，懒汉式单例测试就和这个一样，这里就不写了
         logger.info("饿汉式单例测试");
-        SingletonTest();
+        //singletonTest();
 
         logger.info("静态内部类单例测试");
-        //InnerClassSingletonTest();
+        //innerClassSingletonTest();
+
+        logger.info("枚举实现单例测试");
+        //enumSingletonTest();
+
+        logger.info("反序列化破坏单例测试");
+        serializableSingletonTest();
     }
 
     /**
      * 利用CountDownLatch实现并发模拟测试：饿汉式单例模式
      */
-    private static void SingletonTest(){
+    private static void singletonTest() {
         //执行模拟并发的次数
         int count = 200;
         //初始化CountDownLatch
@@ -46,8 +62,8 @@ public class SingletonModelTest {
 
         long startTime = System.currentTimeMillis();
         //使用for循环初始化线程
-        for (int i = 0 ; i < count ; i++){
-            new Thread(){
+        for (int i = 0; i < count; i++) {
+            new Thread() {
                 @Override
                 public void run() {
                     try {
@@ -63,8 +79,8 @@ public class SingletonModelTest {
                         Object singleton = LazySingletonInnerClass.getInstance();
                         logger.info("饿汉式单例实例：" + singleton);
 
-                    }catch(Exception e){
-                        logger.info("线程异常：",e);
+                    } catch (Exception e) {
+                        logger.info("线程异常：", e);
                     }
                 }
             }.start();
@@ -72,13 +88,13 @@ public class SingletonModelTest {
             countDownLatch.countDown();
         }
         long endTime = System.currentTimeMillis();
-        logger.info("测试耗时："+(endTime - startTime));
+        logger.info("测试耗时：" + (endTime - startTime));
     }
 
     /**
      * 静态内部类单例测试
      */
-    private static void InnerClassSingletonTest(){
+    private static void innerClassSingletonTest() {
         //获取到LazySingletonInnerClass
         Class<?> clazz = LazySingletonInnerClass.class;
 
@@ -91,13 +107,58 @@ public class SingletonModelTest {
             Object lazySingletonInnerClass1 = constructor.newInstance();
             Object lazySingletonInnerClass2 = constructor.newInstance();
             logger.info("获取到的两个单例对象：");
-            logger.info("1:"+lazySingletonInnerClass1);
-            logger.info("2:"+lazySingletonInnerClass2);
-            logger.info("两个对象是否相同："+(lazySingletonInnerClass1==lazySingletonInnerClass2));
+            logger.info("1:" + lazySingletonInnerClass1);
+            logger.info("2:" + lazySingletonInnerClass2);
+            logger.info("两个对象是否相同：" + (lazySingletonInnerClass1 == lazySingletonInnerClass2));
         } catch (NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
             e.printStackTrace();
         }
     }
 
-    
+    /**
+     * 枚举单例测试
+     */
+    private static void enumSingletonTest() {
+        logger.info(EnumSingleton.APPLE.getName() + " price : " + EnumSingleton.APPLE.getPrice());
+        logger.info(EnumSingleton.ORANGE.getName() + " price : " + EnumSingleton.ORANGE.getPrice());
+        logger.info(EnumSingleton.INSTANCE.getName() + " price : " + EnumSingleton.INSTANCE.getPrice());
+    }
+
+    /**
+     * 反序列化单例测试
+     */
+    private static void serializableSingletonTest() {
+        //1.首先声明一个案例
+        SerializableSingleton serializableSingleton1 = SerializableSingleton.getInstance();
+
+        FileOutputStream fileOutputStream = null;
+        ObjectOutputStream objectOutputStream = null;
+        FileInputStream fileInputStream = null;
+        ObjectInputStream objectInputStream = null;
+        try {
+            //2.将其序列化
+            fileOutputStream = new FileOutputStream(SERIALIZABLE_SINGLETON);
+            objectOutputStream = new ObjectOutputStream(fileOutputStream);
+            objectOutputStream.writeObject(serializableSingleton1);
+
+            //3.将其反序列化
+            fileInputStream = new FileInputStream(SERIALIZABLE_SINGLETON);
+            objectInputStream = new ObjectInputStream(fileInputStream);
+            SerializableSingleton serializableSingleton2 = (SerializableSingleton) objectInputStream.readObject();
+
+            //4.判断是否相等
+            logger.info("序列化之前的对象：" + serializableSingleton1);
+            logger.info("序列化之后的对象：" + serializableSingleton2);
+            logger.info("两次对象是否相等：" + (serializableSingleton1 == serializableSingleton2));
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        } finally {
+            //关闭流
+            StreamUtil.closeOutputStream(fileOutputStream);
+            StreamUtil.closeOutputStream(objectOutputStream);
+            StreamUtil.closeInputStream(fileInputStream);
+            StreamUtil.closeInputStream(objectInputStream);
+        }
+
+    }
 }

@@ -40,4 +40,22 @@ public class RegisterSingleton {
         //从注册map中取出已注册的实例，并返回
         return ioc.get(instanceName);
     }
+
+    /**
+     * 改进判断方式，改进上面的代码 getInstance() 方法中的的判断和注册方式
+     *
+     * @param instanceName 实例的名称
+     * @return 获取到的实例
+     */
+    public static RegisterSingleton getInstanceUpdate(String instanceName){
+        if(!ioc.containsKey(instanceName)){
+            //如果没有注册记录，则获取到实例并完成注册
+            try {
+                ioc.put(instanceName,(RegisterSingleton) Class.forName(instanceName).newInstance());
+            } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+        return ioc.get(instanceName);
+    }
 }
